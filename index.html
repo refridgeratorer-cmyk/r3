@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PART III — THE RECKONING</title>
+<style>
+:root{
+  --bg:#090b0e;--panel:#10151a;--text:#e7ebee;--muted:#8c969e;
+  --accent:#d6b98c;--accent2:#8eb6c4;--danger:#b86a6a;--good:#9fbe9b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;background:#050609;color:var(--text);font-family:Georgia,serif;overflow:hidden}
+button{font:inherit}
+#app{position:relative;width:100vw;height:100vh;background:radial-gradient(circle at 50% 35%,#121920 0,#07090c 55%,#030407 100%)}
+canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:auto}
+#hud{position:absolute;inset:0;pointer-events:none}
+#topbar{position:absolute;left:22px;right:22px;top:16px;display:flex;justify-content:space-between;gap:16px;opacity:.96}
+.cluster{display:flex;gap:10px;align-items:center}
+.badge{padding:7px 11px;border:1px solid rgba(214,185,140,.22);background:rgba(5,7,9,.7);backdrop-filter:blur(5px);font-size:13px;letter-spacing:.04em}
+#hpbar{width:170px;height:10px;border:1px solid rgba(255,255,255,.15);background:#171b20}
+#hpfill{height:100%;width:100%;background:linear-gradient(90deg,#a35757,#c78b78)}
+#weapon{font-size:13px;color:var(--accent)}
+#roomtitle{position:absolute;left:50%;top:25px;transform:translateX(-50%);font-size:16px;letter-spacing:.16em;text-transform:uppercase;color:#c3c9ce}
+#hint{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);padding:9px 15px;border:1px solid rgba(255,255,255,.10);background:rgba(4,5,7,.68);font-size:13px;opacity:.85;transition:opacity .25s}
+#minimap{position:absolute;right:22px;bottom:20px;width:180px;height:95px;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(3,1fr);gap:4px;opacity:.75}
+.mini{border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.025)}
+.mini.current{border-color:var(--accent);background:rgba(214,185,140,.16)}
+.mini.boss{border-color:#9e6666;background:rgba(160,80,80,.13)}
+.mini.done{background:rgba(143,166,144,.11)}
+#overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(3,4,6,.78);backdrop-filter:blur(5px);z-index:20}
+#overlay.show{display:flex}
+#overlay.epilogue .panel{overflow:hidden}
+#overlay.epilogue .actions{position:relative;min-height:44px;justify-content:center}
+#overlay.epilogue #overlayBtn{min-width:150px}
+#overlay.epilogue #bossTextWrap{height:min(56vh,560px);max-height:56vh}
+.panel{width:min(760px,90vw);max-height:82vh;overflow:auto;padding:38px;background:linear-gradient(180deg,rgba(18,22,26,.98),rgba(9,11,14,.98));border:1px solid rgba(214,185,140,.25);box-shadow:0 18px 60px rgba(0,0,0,.55)}
+#overlayBody{line-height:1.72;color:#d9dde0;white-space:pre-line}
+.kicker{text-transform:uppercase;letter-spacing:.18em;font-size:12px;color:var(--accent);margin-bottom:12px}
+h1,h2{margin:0 0 14px;font-weight:400}
+h1{font-size:38px;letter-spacing:.04em}
+h2{font-size:26px}
+p{line-height:1.72;color:#d9dde0;white-space:pre-line}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.btn{border:1px solid rgba(214,185,140,.4);background:rgba(214,185,140,.07);color:#eee;padding:10px 16px;cursor:pointer}
+.btn:hover{background:rgba(214,185,140,.14)}
+#titleScreen,#hubScreen,#endingScreen{pointer-events:auto;position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 45%,rgba(30,37,44,.75),rgba(3,4,6,.98) 72%)}
+.screenInner{width:min(760px,88vw);text-align:center}
+.screenInner h1{font-size:clamp(34px,5vw,72px);letter-spacing:.1em}
+.screenInner .sub{color:#aeb7be;line-height:1.7;max-width:650px;margin:16px auto}
+.small{font-size:12px;color:#737d84;letter-spacing:.08em}
+#titleScreen{display:flex}
+#hubScreen,#endingScreen{display:none}
+#hubScreen{overflow:auto;align-items:flex-start;padding:40px 0 110px}
+#hubScreen .screenInner{margin:auto}
+#hubScreen .hubActions{position:fixed;left:0;right:0;bottom:0;z-index:45;display:flex;justify-content:center;padding:14px 20px;background:linear-gradient(180deg,transparent,rgba(3,4,6,.96) 32%);pointer-events:none}
+#hubScreen .hubActions .btn{pointer-events:auto;min-width:210px}
+#bossText{width:100%;height:100%;font:17px/1.9 Georgia,serif;color:#d9dde0;background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.07);padding:28px;resize:none;outline:none;white-space:pre-wrap;overflow:auto;scroll-behavior:smooth}
+#bossText:focus{border-color:rgba(214,185,140,.28)}
+#bossTextWrap{height:min(56vh,560px);overflow:hidden;border-top:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07);padding:0}
+#choiceList{display:grid;gap:10px;margin-top:18px}
+.choice{border:1px solid rgba(255,255,255,.12);padding:14px 16px;background:rgba(255,255,255,.03);cursor:pointer;text-align:left}
+.choice:hover{border-color:rgba(214,185,140,.4);background:rgba(214,185,140,.08)}
+.choice .key{float:right;color:var(--accent);font-size:12px;letter-spacing:.12em}
+.choice .desc{display:block;color:#9ca6ad;font-size:12px;margin-top:5px;line-height:1.5}
+#attackHint{position:absolute;left:50%;bottom:58px;transform:translateX(-50%);font-size:11px;color:#7f8990;opacity:.75;pointer-events:none}
+#musicToggle{position:absolute;left:18px;bottom:18px;z-index:40;pointer-events:auto;padding:7px 10px;border:1px solid rgba(255,255,255,.12);background:rgba(4,5,7,.7);color:#b7bec4;font-size:12px;cursor:pointer}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:50}
+@media (max-width:800px){
+  #minimap{display:none}
+  .panel{padding:26px}
+  .screenInner h1{font-size:36px}
+}
+
+.hubChoiceGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:18px;text-align:left}
+.hubChoice{position:relative;border:1px solid rgba(214,185,140,.25);background:rgba(255,255,255,.03);color:#eee;padding:15px;cursor:pointer;min-height:100px}
+.hubChoice:hover{background:rgba(214,185,140,.08);border-color:rgba(214,185,140,.45)}
+.hubChoice.locked{opacity:.48;cursor:not-allowed}
+.hubChoice strong{display:block;color:#f0e9dc;margin-bottom:6px;font-weight:400}
+.hubChoice span{display:block;color:#9ca6ad;font-size:12px;line-height:1.5}
+.hubChoice .cost{position:absolute;top:10px;right:10px;color:var(--accent);font-size:11px}.hubChoice.selected{background:rgba(214,185,140,.12);border-color:rgba(214,185,140,.75);box-shadow:0 0 22px rgba(214,185,140,.10)}
+#attackFlash{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:6;display:none}
+#titleScreen *,#hubScreen *,#shopScreen *,#endingScreen *{pointer-events:auto}
+@media(max-width:900px){.hubChoiceGrid{grid-template-columns:1fr}}
+.shopGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}.shopItem{position:relative;border:1px solid rgba(214,185,140,.28);background:rgba(255,255,255,.03);padding:16px;cursor:pointer;min-height:140px;text-align:left;color:#eee}.shopItem:hover{background:rgba(214,185,140,.08);border-color:rgba(214,185,140,.5)}.shopItem.sold{opacity:.48;cursor:not-allowed}.shopItem strong{display:block;color:#f0e9dc;margin-bottom:8px;font-weight:400}.shopItem span{display:block;color:#9ca6ad;font-size:12px;line-height:1.5}.shopItem .price{position:absolute;right:12px;top:10px;color:var(--accent);font-size:12px}#shopScreen{position:absolute;inset:0;z-index:31;display:none;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 45%,rgba(28,34,39,.88),rgba(3,4,6,.98) 72%)}#shopScreen .screenInner{max-width:880px}#shopStatus{margin-top:14px;color:#c3c9ce}.loadoutLocked{opacity:.45;cursor:not-allowed!important}#loadoutStatus{margin-top:10px;color:#d6b98c;min-height:18px}@media(max-width:900px){.shopGrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app">
+<audio id="choiceAmbience" src="assets/audio/choice_ambience.wav" loop preload="auto"></audio>
+<audio id="uiClickSfx" src="assets/audio/ui_click.wav" preload="auto"></audio>
+<audio id="uiConfirmSfx" src="assets/audio/ui_confirm.wav" preload="auto"></audio>
+<canvas id="game"></canvas><div id="attackFlash"></div>
+<div id="hud">
+  <div id="topbar">
+    <div class="cluster">
+      <div class="badge">FLOOR <span id="floorNum">0</span></div>
+      <div class="badge">ROOM <span id="roomNum">—</span></div>
+      <div class="badge">MEMORY <span id="memNum">0</span></div>
+      <div id="hpbar"><div id="hpfill"></div></div>
+    </div>
+    <div class="cluster">
+      <div class="badge" id="weapon">Memory Blade</div>
+      <div class="badge">ECHOES <span id="echoCount">0</span></div>
+      <div class="badge" id="metaBadge">UNDERSTANDING 0</div>
+    </div>
+  </div>
+  <div id="roomtitle"></div>
+  <div id="hint">WASD move · click / J / F / Space attack · E interact · R reset · 1–5 switch weapons</div>
+  <div id="attackHint">CLICK / J / SPACE</div>
+  <div id="minimap"></div>
+  <button id="musicToggle">Music: on</button>
+</div>
+
+<div id="titleScreen">
+ <div class="screenInner">
+   <div class="small">A CONTINUATION</div>
+   <h1>THE RECKONING</h1>
+   <div class="sub">Five floors. Five things you have spent too long avoiding.<br>Each run changes. What you learn stays with you.</div>
+   <div class="actions" style="justify-content:center"><button class="btn" id="startBtn">Begin the descent</button></div>
+   <div class="small" style="margin-top:24px">WASD · mouse · click · E · R</div>
+ </div>
+</div>
+
+<div id="hubScreen">
+ <div class="screenInner">
+   <div class="small">BETWEEN RUNS</div>
+   <h1 style="font-size:44px">THE QUIET ROOM</h1>
+   <div class="sub">Nothing here attacks you. Breathe. Choose what to carry into the next run.<br>Permanent lessons cost <b>3 Understanding</b>. Press 1–3 or click an unlocked lesson.</div>
+   <div class="small" style="margin-top:22px;color:#c3c9ce">STARTING LOADOUT — choose exactly one</div><div id="loadoutChoice" class="hubChoiceGrid"></div><div id="loadoutStatus"></div><div class="small" style="margin-top:24px;color:#c3c9ce">PERMANENT LESSONS</div><div id="metaChoice" class="hubChoiceGrid"></div>
+   <div class="small" style="margin-top:20px">UNDERSTANDING: <span id="understanding">0</span></div>
+   <div class="hubActions"><button class="btn" id="continueBtn" disabled>Choose a loadout first</button></div>
+ </div>
+</div>
+
+<div id="shopScreen">
+ <div class="screenInner">
+   <div class="small">BETWEEN FLOORS</div>
+   <h1 style="font-size:46px">THE LITTLE SHOP</h1>
+   <div class="sub">Trade what you have learned for things that might help you keep going.</div>
+   <div id="shopStatus">ECHOES: <span id="shopEchoes">0</span></div>
+   <div id="shopItems" class="shopGrid"></div>
+   <div class="actions" style="justify-content:center"><button class="btn" id="leaveShop">Leave the shop</button></div>
+ </div>
+</div>
+
+<div id="overlay">
+ <div class="panel">
+   <div class="kicker" id="overlayKicker"></div>
+   <h2 id="overlayTitle"></h2>
+   <div id="overlayBody"></div>
+   <div id="choiceList"></div>
+   <div class="actions"><button class="btn" id="overlayBtn">Continue</button></div>
+ </div>
+</div>
+
+<div id="endingScreen">
+ <div class="screenInner">
+   <div class="small">THE LAST THING LEFT</div>
+   <h1 style="font-size:42px">YOU DON'T HAVE TO FIGHT YOURSELF ANYMORE.</h1>
+   <div class="sub">There is something waiting for you.</div>
+   <div class="actions" style="justify-content:center">
+     <a class="btn" id="finalDoc" href="https://docs.google.com/document/d/1wbz_MaEKUNeLbC0FiPr6jUjplEwDgwbhsm9_qT644fo/edit?usp=sharing" target="_blank" rel="noopener">Open the final document</a>
+   </div>
+ </div>
+</div>
+
+<button id="musicToggle" style="display:none">Music: on</button>
+<div id="flash"></div>
+
+<script>
+(() => {
+"use strict";
+
+const FINAL_DOC = "https://docs.google.com/document/d/1wbz_MaEKUNeLbC0FiPr6jUjplEwDgwbhsm9_qT644fo/edit?usp=sharing";
+const SAVE_KEY = "reckoning:stable4";
+const LEGACY_SAVE_KEYS = ["reckoning:v3","reckoning:v2"];
+const W = 960, H = 540;
+
+const floors = [
+ {name:"THE RUINS", theme:"#726154", boss:"THE PAST", track:"assets/music/floor1.mp3",
+  rooms:["Memory Hall","Broken Corridor","Old Room","The Argument","Remains"],
+  enemies:["echo","doubt","splitter"], gimmick:"memory",
+  bossText:`You spent so long looking backward that you forgot how much it hurt to keep staring at the same thing. Every mistake seemed larger the farther away you stood from it. Every word you wished you could take back became sharper in your memory, as though time had decided to preserve only the worst parts. You remembered the anger, the arguments, the moments when you could have been kinder and weren't. You remembered the people you hurt, but you also remembered the person you were when you hurt them. And for a long time, you thought understanding yourself meant finding the exact moment where everything went wrong.
+
+The past does not change because you hate what you did.
+
+It does not become kinder because you wish you had known better.
+
+There are things you will never get to redo. There are apologies that will always come later than they should have. But perhaps remembering does not have to mean reliving.
+
+You were wrong. You know that now.
+
+And knowing that hurts.
+
+But the fact that you can finally admit it means you are no longer the same person who made those mistakes.
+
+The past is still yours.
+
+It simply does not have to be your prison.`},
+ {name:"THE WEIGHT", theme:"#68636e", boss:"THE WEIGHT", track:"assets/music/floor2.mp3",
+  rooms:["Heavy Air","Burden Hall","Falling Room","Stone Walk","Pressure"],
+  enemies:["weight","warden","dread"], gimmick:"weight",
+  bossText:`You carried everything.
+
+Every mistake became something you had to hold.
+
+Every bad memory became another stone.
+
+Every person you disappointed became another reason to add more weight to yourself, until even standing still felt exhausting.
+
+You convinced yourself that this was what taking responsibility looked like. That being sorry meant suffering. That if you hurt someone, then you had to hurt too.
+
+You called it accountability.
+
+Sometimes it was only punishment.
+
+There is a difference.
+
+You cannot carry every consequence forever.
+
+Some things belong to the past. Some things belong to other people. Some things were never yours to carry in the first place.
+
+You cannot undo someone else's pain by destroying yourself over it.
+
+You can regret what you did without becoming nothing but regret.
+
+You can be sorry without spending the rest of your life trying to punish yourself for being human.
+
+For the first time, you put something down.
+
+And the world did not collapse.
+
+You are still standing.`},
+ {name:"THE DARK", theme:"#475e77", boss:"THE UNKNOWN", track:"assets/music/floor3.mp3",
+  rooms:["Blackout","Blind Turn","Whispering Hall","No Signal","The Dark"],
+  enemies:["static","hollow","summoner"], gimmick:"dark",
+  bossText:`Fear was never as simple as you wanted it to be.
+
+You thought fear meant running. You thought being brave meant never turning around.
+
+So every time something frightened you, you tried to get farther away from it.
+
+You ran from uncertainty. You ran from loneliness. You ran from the possibility that someone might leave again. You ran from the thought that maybe all your effort would still not be enough.
+
+You kept moving because movement felt safer than stopping.
+
+But eventually there was nowhere left to run.
+
+The darkness did not disappear.
+
+The unknown did not suddenly become harmless.
+
+You simply turned around.
+
+And for the first time, you looked at the thing you had been avoiding.
+
+It was still frightening.
+
+It still had teeth.
+
+But it was not the end of you.
+
+You cannot know what people will do. You cannot guarantee that nobody will ever leave.
+
+But uncertainty is not the same thing as doom.
+
+Maybe courage was never about being fearless.
+
+Maybe it was simply being willing to stand still long enough to say:
+
+I am afraid, and I am still here.`},
+ {name:"THE EMPTY CITY", theme:"#5d5860", boss:"THE ABSENCE", track:"assets/music/floor4.mp3",
+  rooms:["Empty Street","Windowlight","Apartment Hall","Long Silence","The City"],
+  enemies:["abandoned","orbiter","dread"], gimmick:"lonely",
+  bossText:`You spent so much time measuring yourself by who stayed.
+
+Every silence felt like an answer.
+
+Every unanswered message felt like proof.
+
+Every person who walked away became another piece of evidence for the idea that you were somehow impossible to keep.
+
+You searched for people in empty rooms.
+
+You followed voices that disappeared when you got close.
+
+You kept reaching for things that were already gone.
+
+And every time your hands closed around nothing, you blamed yourself.
+
+Maybe you were too much.
+
+Maybe you weren't enough.
+
+Maybe there was something fundamentally wrong with you.
+
+But absence is not always rejection.
+
+Sometimes people leave because life changes.
+
+Sometimes people grow apart.
+
+Sometimes someone can care about you and still be unable to stay.
+
+You cannot measure your worth by the amount of time someone spends beside you.
+
+Their leaving does not erase the fact that they were once there.
+
+And your loneliness does not mean you were undeserving of love.
+
+For the first time, you stopped chasing the silhouettes.
+
+You let them disappear.
+
+And you remained.`},
+ {name:"THE MIRROR", theme:"#6a6872", boss:"YOU", track:"assets/music/floor5.mp3",
+  rooms:["Reflection","Crossroads","Old Door","Merged Memory","White Hall"],
+  enemies:["mirror","echo","warden"], gimmick:"mirror",
+  bossText:`You thought the final enemy would be the worst one.
+
+You thought it would be everything you hated about yourself collected into one shape, something monstrous enough to justify all the years you spent fighting it.
+
+Instead, it looked like you.
+
+It moved like you.
+
+It knew every step before you took it because it had never been anything separate from you in the first place.
+
+Every attack you made came back.
+
+Every attempt to hurt it only hurt yourself.
+
+And eventually you realized what you had been doing all along.
+
+You had spent years trying to defeat the person who made mistakes. The person who was lonely. The person who did not know how to handle everything they were feeling. The person who sometimes made things worse.
+
+You wanted to destroy that person because you believed that if they were gone, everything would finally be fixed.
+
+But that person was you.
+
+Not all of you. Not forever. But still you.
+
+You are not the worst thing you have ever done.
+
+You are not every apology you wish you had made sooner.
+
+You are a person who did things they regret.
+
+A person who was hurt.
+
+A person who hurt others.
+
+A person who tried.
+
+A person who failed.
+
+A person who kept going anyway.
+
+For the first time, you stopped raising your hands to fight.
+
+The other you looked back at you.
+
+Neither of you moved.
+
+Then, finally:
+
+You lowered your guard.
+
+And so did they.`}
+];
+
+const items = [
+ {id:"memoryBlade",name:"Memory Blade",type:"weapon",desc:"Balanced melee weapon. Fast and forgiving.",rarity:"common"},
+ {id:"burdenHammer",name:"Burden Hammer",type:"weapon",desc:"Slow, heavy strikes. Charged hits create shockwaves.",rarity:"rare"},
+ {id:"regretNeedles",name:"Regret Needles",type:"weapon",desc:"Rapid ranged shards. Weak individually, relentless together.",rarity:"common"},
+ {id:"echo",name:"Echo",type:"weapon",desc:"Repeats your last projectile a heartbeat later.",rarity:"rare"},
+ {id:"forgiven",name:"Forgiven",type:"weapon",desc:"Heals a little when you survive a dangerous hit.",rarity:"legendary"},
+ {id:"patience",name:"Patience",type:"upgrade",desc:"Stand still briefly to gain a temporary shield.",rarity:"common"},
+ {id:"courage",name:"Courage",type:"upgrade",desc:"Gain power while your health is low.",rarity:"rare"},
+ {id:"memory",name:"Memory",type:"upgrade",desc:"Reveals more of the room map.",rarity:"common"},
+ {id:"acceptance",name:"Acceptance",type:"upgrade",desc:"Your first mistake in a room deals no damage.",rarity:"rare"},
+ {id:"forgiveness",name:"Forgiveness",type:"upgrade",desc:"Survive one lethal hit per run with 1 HP.",rarity:"legendary"},
+ {id:"weightless",name:"Weightless",type:"upgrade",desc:"Faster movement, lower knockback resistance.",rarity:"common"},
+];
+
+const weaponUpgradeData = {
+ memoryBlade:{name:"Memory Blade",max:5,base:17,step:3,costBase:6},
+ burdenHammer:{name:"Burden Hammer",max:5,base:19,step:4,costBase:7},
+ regretNeedles:{name:"Regret Needles",max:5,base:4,step:1,costBase:6},
+ echo:{name:"Echo",max:5,base:11,step:3,costBase:7},
+ forgiven:{name:"Forgiven",max:5,base:15,step:3,costBase:8}
+};
+function weaponLevel(id){ return state.weaponLevels?.[id] || 1; }
+function weaponDamage(id){ const d=weaponUpgradeData[id]; return d ? d.base + d.step*(weaponLevel(id)-1) : 16; }
+function weaponUpgradeCost(id){ const d=weaponUpgradeData[id]; return d ? d.costBase + (weaponLevel(id)-1)*4 : 999; }
+function upgradeWeapon(id){
+ const d=weaponUpgradeData[id]; if(!d)return false;
+ const cur=weaponLevel(id); if(cur>=d.max)return false;
+ state.weaponLevels[id]=cur+1;
+ return true;
+}
+
+const metaUpgrades = [
+ {id:"anchor",name:"Anchor",desc:"Start each run with +15 max HP."},
+ {id:"keepsake",name:"Keepsake",desc:"Start each run with a random common upgrade."},
+ {id:"memoryBank",name:"Memory Bank",desc:"Start with one extra memory fragment."},
+];
+
+const canvas=document.getElementById("game"), ctx=canvas.getContext("2d");
+const floorNum=document.getElementById("floorNum"), roomNum=document.getElementById("roomNum"), memNum=document.getElementById("memNum"), echoCount=document.getElementById("echoCount");
+const hpfill=document.getElementById("hpfill"), weaponEl=document.getElementById("weapon"), metaBadge=document.getElementById("metaBadge");
+const roomtitle=document.getElementById("roomtitle"), hint=document.getElementById("hint"), minimap=document.getElementById("minimap");
+const titleScreen=document.getElementById("titleScreen"), hubScreen=document.getElementById("hubScreen"), shopScreen=document.getElementById("shopScreen"), overlay=document.getElementById("overlay"), endingScreen=document.getElementById("endingScreen");
+const musicToggle=document.getElementById("musicToggle");
+const overlayKicker=document.getElementById("overlayKicker"), overlayTitle=document.getElementById("overlayTitle"), overlayBody=document.getElementById("overlayBody"), choiceList=document.getElementById("choiceList"), overlayBtn=document.getElementById("overlayBtn");
+const audio=new Audio(); audio.loop=true; audio.volume=.33; let musicOn=true;
+const choiceAmbience=document.getElementById("choiceAmbience");
+const uiClickSfx=document.getElementById("uiClickSfx");
+const uiConfirmSfx=document.getElementById("uiConfirmSfx");
+choiceAmbience.volume=0.22;
+function playChoiceAmbience(){ if(!musicOn)return; choiceAmbience.currentTime=0; choiceAmbience.play().catch(()=>{}); }
+function stopChoiceAmbience(){ choiceAmbience.pause(); choiceAmbience.currentTime=0; }
+function uiClick(){ if(!musicOn)return; uiClickSfx.currentTime=0; uiClickSfx.play().catch(()=>{}); }
+function uiConfirm(){ if(!musicOn)return; uiConfirmSfx.currentTime=0; uiConfirmSfx.play().catch(()=>{}); }
+let viewW=innerWidth,viewH=innerHeight,dpr=Math.min(devicePixelRatio||1,2);
+let epilogueFrame=0;
+let runtimeFaulted=false;
+
+function resize(){viewW=innerWidth;viewH=innerHeight;dpr=Math.min(devicePixelRatio||1,2);canvas.width=viewW*dpr;canvas.height=viewH*dpr;canvas.style.width=viewW+"px";canvas.style.height=viewH+"px";ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener("resize",resize); resize();
+
+let save;
+function blankSave(){return {version:4,understanding:0,meta:[],fragments:[],runs:0};}
+try {
+  save=JSON.parse(localStorage.getItem(SAVE_KEY)||"");
+  if(!save){
+    for(const key of LEGACY_SAVE_KEYS){
+      try{const legacy=JSON.parse(localStorage.getItem(key)||""); if(legacy){ save={version:4,understanding:Number(legacy.understanding)||0,meta:Array.isArray(legacy.meta)?legacy.meta:[],fragments:Array.isArray(legacy.fragments)?legacy.fragments:[],runs:Number(legacy.runs)||0}; break; }}catch{}
+    }
+  }
+} catch{}
+if(!save || save.version!==4){
+  save=save ? {version:4,understanding:Number(save.understanding)||0,meta:Array.isArray(save.meta)?save.meta:[],fragments:Array.isArray(save.fragments)?save.fragments:[],runs:Number(save.runs)||0} : blankSave();
+}
+persist();
+
+const keys={};
+const pressedKeys=new Set();
+addEventListener("keydown",e=>{
+  const k=e.key.toLowerCase();
+  if(!keys[k]) pressedKeys.add(k);
+  keys[k]=true;
+  if([" ","arrowup","arrowdown","arrowleft","arrowright","j","f","enter","1","2","3","4","5","e"].includes(k)) e.preventDefault();
+  if(state.mode==="hub" && /^[123]$/.test(k)){ const btn=document.querySelector(`#loadoutChoice button[data-slot="${k}"]`); if(btn) btn.click(); return; }
+  if(state.mode==="shop" && /^[123]$/.test(k)){ const btn=document.querySelector(`#shopItems button[data-slot="${k}"]`); if(btn && !btn.disabled) btn.click(); return; }
+  if(state.mode!=="run") return;
+  if(k==="j" || k==="f" || k===" " || k==="enter") { attackQueued=true; shoot(); }
+  const weaponMap={"1":"memoryBlade","2":"burdenHammer","3":"regretNeedles","4":"echo","5":"forgiven"};
+  if(weaponMap[k] && items.some(x=>x.id===weaponMap[k] && x.type==="weapon")){
+    const id=weaponMap[k];
+    if(state.ownedWeapons.includes(id)){state.weapon=id;weaponEl.textContent=`${items.find(x=>x.id===id).name} · Lv.${weaponLevel(id)}`;}
+  }
+  // choice screens: press 1/2/3 to activate the matching option
+  if(overlay.classList.contains("show") && choiceList.children.length && /^[123]$/.test(k)){
+    const idx=Number(k)-1;
+    if(choiceList.children[idx]) choiceList.children[idx].click();
+  }
+});
+addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false;});
+
+let mouse={x:W/2,y:H/2};
+let attackQueued=false; let attackFX=0; let selectedLoadout=null; let loadoutChoices=[]; let loadoutConfirmed=false;
+function screenToWorld(clientX,clientY){
+  const r=canvas.getBoundingClientRect();
+  const sx=r.width/W, sy=r.height/H, sc=Math.min(sx,sy);
+  const ox=(r.width-W*sc)/2, oy=(r.height-H*sc)/2;
+  return {x:(clientX-r.left-ox)/sc,y:(clientY-r.top-oy)/sc};
+}
+canvas.addEventListener("pointermove",e=>{const q=screenToWorld(e.clientX,e.clientY);mouse.x=q.x;mouse.y=q.y});
+canvas.addEventListener("pointerdown",e=>{if(state.mode!=="run")return;e.preventDefault();const q=screenToWorld(e.clientX,e.clientY);mouse.x=q.x;mouse.y=q.y;if(state.nearPickup && Math.hypot(q.x-state.nearPickup.x,q.y-state.nearPickup.y)<52){tryPickup();return;}shoot();},{passive:false});
+window.addEventListener("pointerdown",e=>{ if(state.mode!=="run") return; if(e.target===canvas) return; if(e.target.closest("button,a,#overlay")) return; const q=screenToWorld(e.clientX,e.clientY); mouse.x=q.x; mouse.y=q.y; shoot(); });
+
+const state={
+ mode:"title", floor:0, room:0, rooms:[], roomType:"combat", roomCleared:false,
+ player:null, enemies:[], projectiles:[], particles:[], doors:[], pickups:[], bossHazards:[], enemyHazards:[], memoryThisRun:0,
+ currentTrack:"", lastTime:performance.now(), roomTime:0, boss:null, bossEpilogue:false,
+ weapon:"memoryBlade", ownedWeapons:["memoryBlade"], weaponLevels:{memoryBlade:1,burdenHammer:1,regretNeedles:1,echo:1,forgiven:1}, upgrades:[], roomShield:false, deaths:0, attackCd:0, echoes:0, nearPickup:null, arena:{left:28,right:W-28,top:82,bottom:H-28}, arenaTarget:{left:28,right:W-28,top:82,bottom:H-28}, arenaHold:0
+};
+
+function persist(){localStorage.setItem(SAVE_KEY,JSON.stringify(save))}
+function setMode(m){
+  titleScreen.style.display=m==="title"?"flex":"none";
+  hubScreen.style.display=m==="hub"?"flex":"none";
+  shopScreen.style.display=m==="shop"?"flex":"none";
+  endingScreen.style.display=m==="ending"?"flex":"none";
+  if(m!=="run" && m!=="shop") { overlay.classList.remove("show"); overlay.classList.remove("epilogue"); }
+  state.mode=m;
+  if(m==="hub") { stopChoiceAmbience(); playChoiceAmbience(); } else { stopChoiceAmbience(); }
+}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function rnd(a,b){return Math.random()*(b-a)+a}
+function choice(a){return a[Math.floor(Math.random()*a.length)]}
+function flash(){const f=document.getElementById("flash");f.style.transition="none";f.style.opacity=".75";requestAnimationFrame(()=>{f.style.transition="opacity .5s";f.style.opacity="0"})}
+
+function playTrack(src,fade=true){
+ if(!musicOn)return;
+ if(state.currentTrack===src)return;
+ state.currentTrack=src; audio.src=src; audio.currentTime=0;
+ audio.volume=0; audio.play().catch(()=>{});
+ let v=.28; let id=setInterval(()=>{audio.volume=Math.min(v,audio.volume+.02);if(audio.volume>=v)clearInterval(id)},50);
+}
+
+function trackForFloor(){ if(state.floor===0)return "assets/music/hub.mp3"; if(state.boss?.final)return "assets/music/final.mp3"; return floors[state.floor-1].track; }
+
+function resetRoom(){
+ const p=state.player; if(!p)return;
+ p.x=W/2;p.y=H-84;p.vx=0;p.vy=0;p.hp=p.maxHp;p.inv=0;
+ state.boss=null; state.enemies=[];state.projectiles=[];state.particles=[];state.pickups=[];state.bossHazards=[];state.enemyHazards=[];state.roomTime=0;state.roomShield=false;state.attackCd=0;attackFX=0;resetArena();
+ spawnRoomContent();
+}
+function applySelectedLoadout(){
+  state.ownedWeapons=["memoryBlade"];
+  state.upgrades=[];
+  state.weapon="memoryBlade";
+  const pick=items.find(x=>x.id===selectedLoadout);
+  if(!pick)return;
+  if(pick.type==="weapon"){
+    if(!state.ownedWeapons.includes(pick.id))state.ownedWeapons.push(pick.id);
+    state.weapon=pick.id;
+  }else{
+    state.upgrades.push(pick.id);
+  }
+}
+function buildRun(){
+ state.floor=1;state.room=0;state.rooms=[];
+ for(let i=0;i<5;i++) state.rooms.push({type:"combat",title:floors[i].name+" · "+choice(floors[i].rooms),cleared:false});
+ state.rooms[2].type="event"; state.rooms[2].title=floors[2].name+" · NO SIGNAL";
+ state.rooms[4].type="event"; state.rooms[4].title=floors[4].name+" · MEMORY";
+ state.rooms.push({type:"boss",title:floors[0].boss,cleared:false,bossFloor:1});
+ state.player={x:W/2,y:H-84,vx:0,vy:0,hp:110,maxHp:110,spd:235,radius:15,damage:16,inv:0};
+ if(save.meta.includes("anchor")) state.player.maxHp+=15,state.player.hp+=15;
+ state.weapon="memoryBlade";state.ownedWeapons=["memoryBlade"];state.weaponLevels={memoryBlade:1,burdenHammer:1,regretNeedles:1,echo:1,forgiven:1};state.upgrades=[];state.memoryThisRun=save.meta.includes("memoryBank")?1:0;state.echoes=0;
+ if(selectedLoadout!=="memoryBlade"){ if(items.find(x=>x.id===selectedLoadout)?.type==="weapon"){state.ownedWeapons.push(selectedLoadout);state.weapon=selectedLoadout;} else if(selectedLoadout){state.upgrades.push(selectedLoadout);} }
+ if(save.meta.includes("keepsake"))state.upgrades.push("patience");
+ state.mode="run";setMode("run"); loadRoom();
+}
+
+function generateFloor(){
+ // Rebuild future room templates each floor, preserving a short path then a boss.
+ const f=floors[state.floor-1];
+ state.rooms=[];
+ const names=[...f.rooms].sort(()=>Math.random()-.5);
+ for(let i=0;i<5;i++) state.rooms.push({type:i===2||i===4?"event":"combat",title:f.name+" · "+names[i],cleared:false});
+ state.rooms.push({type:"boss",title:f.boss,cleared:false,bossFloor:state.floor});
+ state.room=0;
+}
+
+function nextFloor(){
+ state.floor++;
+ if(state.floor>5){startFinalBoss();return}
+ generateFloor();setMode("run");playTrack(floors[state.floor-1].track);loadRoom();
+}
+
+function loadRoom(){
+ const r=state.rooms?.[state.room];
+ if(!r){
+   console.error("Invalid room state", state.floor, state.room, state.rooms);
+   state.room = Math.max(0, Math.min(state.room || 0, (state.rooms?.length || 1)-1));
+   return;
+ }
+ // Clear any stale combat state before initializing the new room.
+ state.boss=null;
+ state.enemies=[]; state.projectiles=[]; state.particles=[]; state.pickups=[]; state.bossHazards=[]; state.enemyHazards=[]; state.nearPickup=null; resetArena();
+ state.roomType=r.type; state.roomCleared=!!r.cleared; state.roomTime=0; state.attackCd=0; attackFX=0;
+ if(!state.player){
+   state.player={x:W/2,y:H-84,vx:0,vy:0,hp:110,maxHp:110,spd:235,radius:15,damage:16,inv:0};
+ } else {
+   state.player.x=W/2; state.player.y=H-84; state.player.vx=0; state.player.vy=0;
+   state.player.hp=state.player.maxHp; state.player.inv=0;
+ }
+ state.doors=[{x:W-30,y:H/2-48,w:22,h:96,open:false}];
+ spawnRoomContent();
+ if(state.floor===1 && state.room===0 && !save.fragments.includes("opening")){
+   state.pickups.push({kind:"memory",id:"opening",x:W/2-150,y:H/2,txt:"I should have said it sooner."});
+ }
+ floorNum.textContent=state.floor;roomNum.textContent=(state.room+1)+"/"+state.rooms.length;memNum.textContent=state.memoryThisRun;metaBadge.textContent="UNDERSTANDING "+save.understanding;echoCount.textContent=state.echoes;
+ roomtitle.textContent=r.title; updateMinimap();
+ playTrack(trackForFloor());
+}
+
+function spawnRoomContent(){
+ const r=state.rooms[state.room];
+ if(r.type==="combat" && !r.cleared){
+  const f=floors[state.floor-1];
+  // Difficulty ramps by floor: denser rooms, tougher enemies, and less free space.
+  const n=Math.min(7, 3 + Math.floor((state.floor-1)/2) + Math.floor(Math.random()*2));
+  for(let i=0;i<n;i++){
+    const e=makeEnemy(choice(f.enemies),rnd(150,W-150),rnd(110,H-150));
+    const scale=1 + (state.floor-1)*0.12;
+    e.max=Math.round(e.max*scale); e.hp=e.max; e.speed*=1 + (state.floor-1)*0.07;
+    state.enemies.push(e);
+  }
+  // Better rooms give slightly less guaranteed loot as difficulty rises.
+  if(Math.random() < Math.max(.38,.62-(state.floor-1)*.04)) state.pickups.push(makePickup(rnd(180,W-180),rnd(120,H-150)));
+ }
+ if(r.type==="event" && !r.cleared){
+   const id=floors[state.floor-1].gimmick;
+   if(id==="memory"){
+     const fid="f"+state.floor+"r"+state.room;
+     if(!save.fragments.includes(fid)) state.pickups.push({kind:"memory",id:fid,x:W/2,y:H/2,txt:choice(["I remember this place.","I thought I'd left this behind.","Maybe I didn't."])});
+   }
+   else if(id==="weight") state.pickups.push({kind:"item",item:"weightless",x:W/2,y:H/2});
+   else if(id==="dark") state.pickups.push({kind:"choice",id:"fear",x:W/2,y:H/2});
+   else if(id==="lonely") state.pickups.push({kind:"choice",id:"lonely",x:W/2,y:H/2});
+   else if(id==="mirror") state.pickups.push({kind:"item",item:"memory",x:W/2,y:H/2});
+ }
+ if(r.type==="boss"){ state.roomCleared=false; spawnBoss(state.floor); }
+}
+
+function makeEnemy(type,x,y){
+ const base={x,y,vx:0,vy:0,r:16,hp:40,max:40,type,hit:0,speed:70,color:"#a46b6b",cooldown:.8,phase:Math.random()*Math.PI*2,telegraph:0,spawned:false};
+ if(type==="weight"){Object.assign(base,{r:25,hp:92,max:92,speed:42,color:"#867d75",cooldown:2.5});}
+ if(type==="static"){Object.assign(base,{r:15,hp:62,max:62,speed:74,color:"#6f88a1",cooldown:1.8});}
+ if(type==="hollow"){Object.assign(base,{r:20,hp:76,max:76,speed:50,color:"#6e6872",cooldown:1.6});}
+ if(type==="mirror"){Object.assign(base,{r:19,hp:78,max:78,speed:76,color:"#b3a4c6",cooldown:1.5});}
+ if(type==="abandoned"){Object.assign(base,{r:14,hp:42,max:42,speed:56,color:"#8ca09d",cooldown:2.8});}
+ if(type==="echo"){Object.assign(base,{r:16,hp:50,max:50,speed:92,color:"#8a96a5",cooldown:2.2});}
+ if(type==="doubt"){Object.assign(base,{r:13,hp:36,max:36,speed:116,color:"#9a6d79",cooldown:1.7});}
+ if(type==="splitter"){Object.assign(base,{r:21,hp:70,max:70,speed:58,color:"#a67d63",cooldown:2.6});}
+ if(type==="dread"){Object.assign(base,{r:23,hp:84,max:84,speed:46,color:"#70556c",cooldown:2.9});}
+ if(type==="summoner"){Object.assign(base,{r:20,hp:68,max:68,speed:52,color:"#5d7486",cooldown:3.4});}
+ if(type==="warden"){Object.assign(base,{r:22,hp:100,max:100,speed:28,color:"#8d8170",cooldown:4.2});}
+ if(type==="orbiter"){Object.assign(base,{r:15,hp:56,max:56,speed:92,color:"#738f95",cooldown:2.4});}
+ return base;
+}
+
+function spawnBurst(x,y,color="#d6b98c") {
+  if(!Number.isFinite(x) || !Number.isFinite(y)) return;
+  for(let i=0;i<10;i++){
+    const a=Math.random()*Math.PI*2, sp=55+Math.random()*140;
+    state.particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.35+.25*Math.random(),size:1.5+Math.random()*2.5,color});
+  }
+}
+
+function makePickup(x,y){
+ const pool=["patience","courage","weightless","acceptance","regretNeedles","burdenHammer","echo"];
+ const id=choice(pool);
+ return {kind:"item",item:id,x,y};
+}
+function pickupLabel(it){ if(it.kind==="memory") return "MEMORY"; if(it.kind==="item"){const item=items.find(x=>x.id===it.item);return item?item.name:"ITEM";} if(it.kind==="choice") return "CHOICE"; return "PICKUP"; }
+function tryPickup(){
+ if(state.mode!=="run"||!state.player||state.boss)return false;
+ let best=null,bestD=52;
+ for(const it of state.pickups){if(it.taken||!Number.isFinite(it.x)||!Number.isFinite(it.y))continue;const d=dist(state.player,it);if(d<bestD){bestD=d;best=it;}}
+ if(!best)return false;
+ best.taken=true;
+ if(best.kind==="memory"){if(!save.fragments.includes(best.id)){save.fragments.push(best.id);state.memoryThisRun++;save.understanding++;persist();}showOverlay("FOUND","Memory",best.txt||"A piece of memory.",[{label:"Continue",fn:hideOverlay}]);}
+ else if(best.kind==="item"){applyItem(best.item);}
+ else if(best.kind==="choice"){applyItem(best.id==="fear"?"courage":"acceptance");}
+ state.nearPickup=null;state.pickups=state.pickups.filter(x=>!x.taken);return true;
+}
+
+
+function resetArena(){
+ state.arena={left:28,right:W-28,top:82,bottom:H-28};
+ state.arenaTarget={left:28,right:W-28,top:82,bottom:H-28};
+ state.arenaHold=0;
+}
+function shrinkArena(amount=34,duration=3.5){
+ state.arenaTarget.left=Math.min(state.arenaTarget.left+amount,120);
+ state.arenaTarget.right=Math.max(state.arenaTarget.right-amount,W-120);
+ state.arenaHold=Math.max(state.arenaHold,duration);
+}
+function restoreArena(){
+ state.arenaTarget.left=28;state.arenaTarget.right=W-28;state.arenaTarget.top=82;state.arenaTarget.bottom=H-28;
+}
+function spawnEnemyShot(e,ang,speed=220,life=2.2,r=7,damage=10,extra={}){
+ const pad=e.r+10;
+ state.projectiles.push({owner:"enemy",x:e.x+Math.cos(ang)*pad,y:e.y+Math.sin(ang)*pad,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life,r,damage,...extra});
+}
+function spawnBossShot(b,ang,speed=220,life=2.4,r=7,damage=12,extra={}){
+ const pad=b.r+14;
+ state.projectiles.push({owner:"boss",x:b.x+Math.cos(ang)*pad,y:b.y+Math.sin(ang)*pad,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life,r,damage,...extra});
+}
+function addEnemyAoe(x,y,r=70,damage=16,delay=.8){
+ state.enemyHazards.push({type:"aoe",x,y,r,damage,delay,life:.35,hit:false});
+}
+function addEnemyWall(){
+ shrinkArena(34,3.2);
+ state.enemyHazards.push({type:"arena",delay:.45,life:2.7,hit:false});
+}
+
+function spawnBoss(f){
+ const floorDef=floors[f-1];
+ if(!floorDef){ console.error("Missing boss floor", f); state.boss=null; return; }
+ const bossHpMap={1:520,2:700,3:820,4:460,5:760};
+ const bossHp=bossHpMap[f]||520;
+ const isFinal=f===5;
+ const ownedMirror=Array.isArray(state.ownedWeapons)&&state.ownedWeapons.length?state.ownedWeapons.slice():["memoryBlade"];
+ state.boss={final:isFinal,x:W/2,y:110,r:isFinal?60:52,hp:bossHp,max:bossHp,phase:0,inv:0,cooldown:isFinal?1.25:1.5,moveT:0,
+   mirrorWeapons:ownedMirror,mirrorIndex:0,mirrorWeapon:ownedMirror[0],mirrorSwap:4.2,mirrorLastAttack:null,mirrorShieldUsed:false,mirrorHealUsed:false,
+   mirrorUpgrades:Array.isArray(state.upgrades)?state.upgrades.slice():[]
+ };
+ state.enemies=[];
+}
+function playerDamage(amount){
+ const p=state.player;if(p.inv>0)return;
+ if(state.upgrades.includes("acceptance") && !state.roomShield){state.roomShield=true;return}
+ p.hp-=amount;p.inv=.7;
+ if(p.hp<=0){
+   state.deaths++;save.understanding=Math.max(0,save.understanding-1);
+   persist();showDeath();
+ }
+}
+function showDeath(){
+ state.mode="death"; showOverlay("THE RUN BREAKS","You fell again.",`The room returns to stillness.\nYou keep what you learned, but the floor does not wait for you.`,[
+  {label:"Return to the room",fn:()=>{resetRoom();hideOverlay();state.mode="run";}},
+  {label:"Retreat to the quiet room",fn:()=>{hideOverlay();setMode("hub");updateHub();}}
+ ]);
+}
+
+function shoot(){
+ const p=state.player;if(state.mode!=="run"||!p||state.attackCd>0)return;
+ const ang=Math.atan2(mouse.y-p.y,mouse.x-p.x);
+ const w=state.weapon; const lv=weaponLevel(w);
+ const cdMap={memoryBlade:.26,burdenHammer:.68,regretNeedles:.40,echo:.50,forgiven:.46};
+ const cd=Math.max(.22, (cdMap[w]||.26) - Math.max(0,lv-3)*.025);
+ state.attackCd=cd; attackFX=.16;
+ if(w==="burdenHammer"){
+   p.vx-=Math.cos(ang)*(70+lv*10);p.vy-=Math.sin(ang)*(70+lv*10);
+   const dmg=weaponDamage(w); const speed=330+lv*18; const rad=10+lv*1.5;
+   state.projectiles.push({owner:"player",x:p.x+Math.cos(ang)*(30+lv*2),y:p.y+Math.sin(ang)*(30+lv*2),vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:.55,r:rad,damage:dmg,slow:true,hammer:true});
+ } else if(w==="regretNeedles"){
+   const count=lv>=5?4:lv>=3?3:2; const spread=lv>=4?.085:.10; const dmg=weaponDamage(w); const speed=620+lv*22;
+   for(let i=0;i<count;i++){
+     const centered=i-(count-1)/2; const a=ang+centered*spread;
+     state.projectiles.push({owner:"player",x:p.x+Math.cos(a)*24,y:p.y+Math.sin(a)*24,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:.85,r:4,damage:dmg});
+   }
+ } else if(w==="echo"){
+   const dmg=weaponDamage(w),speed=500+lv*15;
+   state.projectiles.push({owner:"player",x:p.x+Math.cos(ang)*24,y:p.y+Math.sin(ang)*24,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:.9,r:6,damage:dmg,echo:true,echoLevel:lv});
+ } else if(w==="forgiven"){
+   const dmg=weaponDamage(w),speed=500+lv*18;
+   state.projectiles.push({owner:"player",x:p.x+Math.cos(ang)*26,y:p.y+Math.sin(ang)*26,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,life:1.0,r:7,damage:dmg,healOnHit:true,healAmount:2+Math.floor(lv/2)});
+ } else {
+   const range=52+lv*6; const hitX=p.x+Math.cos(ang)*range,hitY=p.y+Math.sin(ang)*range; const dmg=weaponDamage(w);
+   for(const e of state.enemies){if(Math.hypot(e.x-hitX,e.y-hitY)<e.r+34){e.hp-=dmg;e.hit=.18;spawnBurst(e.x,e.y,e.color)}}
+   if(state.boss && Math.hypot(state.boss.x-hitX,state.boss.y-hitY)<state.boss.r+36 && state.boss.inv<=0){state.boss.hp-=dmg;state.boss.inv=.15;spawnBurst(state.boss.x,state.boss.y,"#d6b98c")}
+ }
+}
+
+function update(dt){
+ if(state.mode!=="run")return;
+ const p=state.player;if(!p)return;
+ state.roomTime+=dt;
+ p.inv=Math.max(0,p.inv-dt);state.attackCd=Math.max(0,state.attackCd-dt);attackFX=Math.max(0,attackFX-dt);
+ // Arena contracts/reopens gradually so warden attacks feel threatening but never permanent.
+ if(state.arenaHold>0){state.arenaHold=Math.max(0,state.arenaHold-dt);if(state.arenaHold===0)restoreArena();}
+ for(const k of ["left","right","top","bottom"]){state.arena[k]+=(state.arenaTarget[k]-state.arena[k])*Math.min(1,dt*4);}
+ state.projectiles=state.projectiles.filter(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.life-=dt;return q.life>0&&q.x>-40&&q.x<W+40&&q.y>40&&q.y<H+40});
+ state.particles.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.life-=dt});state.particles=state.particles.filter(q=>q.life>0);
+ let ax=(keys["d"]?1:0)-(keys["a"]?1:0), ay=(keys["s"]?1:0)-(keys["w"]?1:0);const len=Math.hypot(ax,ay)||1;ax/=len;ay/=len;
+ let speed=state.upgrades.includes("weightless")?280:p.spd;
+ if(state.floor===2){
+   const heavy=((p.x-250)**2+(p.y-220)**2<85**2)||((p.x-680)**2+(p.y-360)**2<70**2);
+   if(heavy&&!state.upgrades.includes("weightless"))speed*=.62;
+ }
+ p.x=clamp(p.x+ax*speed*dt,state.arena.left+8,state.arena.right-8);p.y=clamp(p.y+ay*speed*dt,state.arena.top+8,state.arena.bottom-8);
+ if(pressedKeys.has("r")){pressedKeys.delete("r");resetRoom()}
+ if(pressedKeys.has("e")){pressedKeys.delete("e");if(!tryPickup())interact()}
+ if(attackQueued){attackQueued=false;shoot()}
+ if(state.floor===5 && state.roomType!=="boss" && Math.random()<.003 && state.enemies.length<7){
+   const mx=clamp(W-p.x,80,W-80), my=clamp(p.y,120,H-80); state.enemies.push(makeEnemy("mirror",mx,my));
+ }
+ // Enemy AI: each type has a distinct job rather than simply chasing.
+ for(const e of state.enemies){
+   e.cooldown-=dt;e.phase+=dt;
+   const dx=p.x-e.x,dy=p.y-e.y,d=Math.hypot(dx,dy)||1,a=Math.atan2(dy,dx);
+   if(e.type==="dread"){
+     const desired=190; const move=d>desired?1:(d<130?-1:0);e.vx=Math.cos(a)*e.speed*move;e.vy=Math.sin(a)*e.speed*move;
+     if(e.cooldown<=0){addEnemyAoe(p.x,p.y,78,16,0.85);e.cooldown=3.2;}
+   } else if(e.type==="summoner"){
+     const move=d>250?1:(d<180?-1:0);e.vx=Math.cos(a)*e.speed*move;e.vy=Math.sin(a)*e.speed*move;
+     if(e.cooldown<=0 && state.enemies.length<9){
+       const sx=clamp(e.x+Math.cos(a+Math.PI/2)*70,60,W-60), sy=clamp(e.y+Math.sin(a+Math.PI/2)*70,120,H-70);
+       const child=makeEnemy(Math.random()<.5?"echo":"doubt",sx,sy);child.hp*=.8;child.max=child.hp;state.enemies.push(child);state.enemyHazards.push({type:"summon",x:e.x,y:e.y,r:28,delay:.45,life:.25,hit:false});e.cooldown=3.8;
+     }
+   } else if(e.type==="warden"){
+     const move=d>320?1:0;e.vx=Math.cos(a)*e.speed*move;e.vy=Math.sin(a)*e.speed*move;
+     if(e.cooldown<=0){addEnemyWall();e.cooldown=5.4;}
+   } else if(e.type==="orbiter"){
+     const tangent=a+Math.PI/2;const radial=(d-155)*.7;e.vx=Math.cos(tangent)*e.speed+Math.cos(a)*radial;e.vy=Math.sin(tangent)*e.speed+Math.sin(a)*radial;
+     if(e.cooldown<=0){spawnEnemyShot(e,a,300,1.5,6,9);e.cooldown=2.6;}
+   } else if(e.type==="static"){
+     const move=d>240?1:0;e.vx=Math.cos(a)*e.speed*move;e.vy=Math.sin(a)*e.speed*move;
+     if(e.cooldown<=0){spawnEnemyShot(e,a,250,2.0,6,10);e.x=rnd(100,W-100);e.y=rnd(120,H-120);e.cooldown=2.5;}
+   } else if(e.type==="abandoned"){
+     const move=d>180?1:0;e.vx=Math.cos(a)*e.speed*move;e.vy=Math.sin(a)*e.speed*move;
+     if(e.cooldown<=0){const child=makeEnemy("doubt",clamp(e.x+rnd(-100,100),60,W-60),clamp(e.y+rnd(-80,80),120,H-80));state.enemies.push(child);e.cooldown=4.5;}
+   } else if(e.type==="mirror"){
+     const mx=mouse.x-p.x,my=mouse.y-p.y;const ma=Math.atan2(my,mx);const move=dist(e,p)>220?1:-1;e.vx=Math.cos(ma+Math.PI)*e.speed*move;e.vy=Math.sin(ma+Math.PI)*e.speed*move;
+     if(e.cooldown<=0){spawnEnemyShot(e,a+Math.PI,.9,1.4,5,10);e.cooldown=2.1;}
+   } else if(e.type==="splitter"){
+     e.vx=Math.cos(a)*e.speed;e.vy=Math.sin(a)*e.speed;
+     if(e.cooldown<=0){addEnemyAoe(e.x,e.y,54,12,.6);e.cooldown=2.8;}
+   } else {
+     // Echo / Doubt / Weight: direct pressure, with occasional readable telegraphs.
+     e.vx=Math.cos(a)*e.speed;e.vy=Math.sin(a)*e.speed;
+     if(e.type==="echo" && e.cooldown<=0){spawnEnemyShot(e,a,210,1.8,6,9);e.cooldown=2.7;}
+     if(e.type==="doubt" && e.cooldown<=0){const aa=a+.18*Math.sin(e.phase*5);spawnEnemyShot(e,aa,330,1.2,5,11);e.cooldown=2.1;}
+     if(e.type==="weight" && e.cooldown<=0 && d<180){addEnemyAoe(e.x,e.y,68,18,.55);e.cooldown=3.1;}
+   }
+   e.x=clamp(e.x+e.vx*dt,e.r+state.arena.left-28,state.arena.right-e.r+28);e.y=clamp(e.y+e.vy*dt,e.r+state.arena.top-28,state.arena.bottom-e.r+28);
+   if(dist(e,p)<e.r+p.radius){
+     const baseDamage=e.type==="weight"?16:e.type==="dread"?13:e.type==="warden"?11:9;
+     const floorBonus=Math.min(12,(state.floor-1)*2);playerDamage(baseDamage+floorBonus);
+   }
+   if(e.hit>0)e.hit-=dt;
+ }
+ // Projectiles: owner determines valid targets, preventing boss self-damage and friendly-fire weirdness.
+ for(const q of state.projectiles){
+   if(q.life<=0)continue;
+   if(q.owner==="player"){
+     for(const e of state.enemies){if(q.life<=0)break;if(Math.hypot(e.x-q.x,e.y-q.y)<e.r+q.r){e.hp-=q.damage;q.life=0;spawnBurst(e.x,e.y,e.color);if(q.healOnHit)p.hp=Math.min(p.maxHp,p.hp+(q.healAmount||2));if(q.echo){const ex=e.x,ey=e.y;const ev=q.echoLevel||1;setTimeout(()=>{if(state.mode==="run")state.projectiles.push({owner:"player",x:ex,y:ey,vx:-q.vx,vy:-q.vy,life:.45,r:4,damage:Math.max(5,Math.round(q.damage*(0.52+ev*0.06)))});},100)}}}
+     if(q.life>0&&state.boss&&state.boss.inv<=0&&Math.hypot(state.boss.x-q.x,state.boss.y-q.y)<state.boss.r+q.r){state.boss.hp-=q.damage;q.life=0;state.boss.inv=.1;spawnBurst(state.boss.x,state.boss.y,"#d6b98c");}
+   } else if(q.owner==="boss" || q.owner==="enemy"){
+     if(Math.hypot(p.x-q.x,p.y-q.y)<p.radius+q.r){playerDamage(q.damage);if(q.owner==="boss"&&q.healBoss&&state.boss){state.boss.hp=Math.min(state.boss.max,state.boss.hp+4);}q.life=0;}
+   }
+ }
+ const beforeEnemyCount=state.enemies.length;
+ const dead=state.enemies.filter(e=>e.hp<=0);
+ for(const e of dead){if(e.type==="splitter")for(let i=0;i<2;i++){const c=makeEnemy("doubt",clamp(e.x+rnd(-22,22),60,W-60),clamp(e.y+rnd(-22,22),120,H-80));c.hp*=.65;c.max=c.hp;state.enemies.push(c);}}
+ state.enemies=state.enemies.filter(e=>e.hp>0);
+ const defeatedEnemies=Math.max(0,beforeEnemyCount-state.enemies.length);if(defeatedEnemies)state.echoes+=defeatedEnemies;
+ updateEnemyHazards(dt);
+ if(state.boss){updateBoss(dt);} else {
+   if(!state.roomCleared&&state.enemies.length===0&&state.roomType==="combat"){state.roomCleared=true;state.rooms[state.room].cleared=true;state.echoes+=2;showRoomReward();updateMinimap();}
+   if(state.mode==="run"&&!overlay.classList.contains("show")&&state.roomType==="event"&&state.pickups.filter(x=>x.kind==="choice"||x.kind==="memory"||x.kind==="item").length===0){state.roomCleared=true;state.rooms[state.room].cleared=true;updateMinimap();}
+ }
+ state.nearPickup=null;let nearest=null,nearestD=52;for(const it of state.pickups){if(it.taken||!Number.isFinite(it.x)||!Number.isFinite(it.y))continue;const d=dist(p,it);if(d<nearestD){nearestD=d;nearest=it;}}state.nearPickup=nearest;
+ updateHUD();
+}
+function updateEnemyHazards(dt){
+ for(const h of state.enemyHazards){
+   h.delay-=dt;if(h.delay<=0){h.life-=dt;if(!h.hit){let hit=false;if(h.type==="aoe")hit=dist(state.player,h)<h.r+state.player.radius;else if(h.type==="summon")hit=false;if(hit){playerDamage(h.damage);h.hit=true;}}}
+ }
+ state.enemyHazards=state.enemyHazards.filter(h=>h.life>0);
+}
+
+function nextRoom(){
+ if(!Array.isArray(state.rooms) || state.room>=state.rooms.length-1)return;
+ state.room++;
+ state.mode="run";
+ setMode("run");
+ loadRoom();
+}
+function applyItem(id, notify=true){
+ const item=items.find(x=>x.id===id);if(!item)return false;
+ if(item.type==="weapon"){if(!state.ownedWeapons.includes(id))state.ownedWeapons.push(id);state.weapon=id;weaponEl.textContent=item.name}
+ else if(!state.upgrades.includes(id)){state.upgrades.push(id)}
+ save.understanding++;persist();
+ if(notify) showOverlay("FOUND",item.name,item.desc,[{label:"Carry it",fn:hideOverlay}]);
+ return true;
+}
+function weaponUpgradeChoicePool(){
+ return state.ownedWeapons.filter(id=>weaponUpgradeData[id] && weaponLevel(id)<weaponUpgradeData[id].max);
+}
+function applyReward(id, notify=false){
+ if(weaponUpgradeData[id]){
+   const ok=upgradeWeapon(id);
+   if(ok){ persist(); if(notify)showOverlay("UPGRADED",`${weaponUpgradeData[id].name} · Lv.${weaponLevel(id)}`,`Damage and handling improved.`,[{label:"Continue",fn:hideOverlay}]); }
+   return ok;
+ }
+ return applyItem(id,!notify);
+}
+function formatRewardName(id){
+ if(weaponUpgradeData[id]) return `${weaponUpgradeData[id].name} · Lv.${weaponLevel(id)+1}`;
+ return items.find(x=>x.id===id)?.name||id;
+}
+function showRoomReward(){
+ const pool=["patience","weightless","acceptance","memory","courage"];
+ const wu=weaponUpgradeChoicePool(); if(wu.length) pool.push(wu[Math.floor(Math.random()*wu.length)]);
+ let a=choice(pool), b=choice(pool.filter(x=>x!==a)); if(!b)b="patience";
+ const getDesc=id=>weaponUpgradeData[id]?`Upgrade ${weaponUpgradeData[id].name} to Lv.${weaponLevel(id)+1}.`:(items.find(x=>x.id===id)?.desc||"");
+ showOverlay("ROOM CLEARED","Choose what to carry","Choose one. Press 1 or 2, or click.",[
+  {label:formatRewardName(a),desc:getDesc(a),key:"1",fn:()=>{hideOverlay();if(applyReward(a,true)){} }},
+  {label:formatRewardName(b),desc:getDesc(b),key:"2",fn:()=>{hideOverlay();if(applyReward(b,true)){} }}
+ ]);
+}
+
+function interact(){
+ const p=state.player;
+ if(state.roomType==="event" && state.pickups.length===0){state.roomCleared=true;state.rooms[state.room].cleared=true;updateMinimap();}
+ if(state.roomCleared && p.x>W-180){
+   nextRoom();
+ } else if(p.x>W-150 && !state.roomCleared){
+   showOverlay("THE WAY FORWARD","Not yet.", "The room still has something left to teach you.", [{label:"Understood",fn:hideOverlay}]);
+ }
+}
+function distanceToSegment(px,py,x1,y1,x2,y2){
+ const dx=x2-x1,dy=y2-y1; const len2=dx*dx+dy*dy;
+ if(len2===0)return Math.hypot(px-x1,py-y1);
+ let t=((px-x1)*dx+(py-y1)*dy)/len2; t=Math.max(0,Math.min(1,t));
+ return Math.hypot(px-(x1+t*dx),py-(y1+t*dy));
+}
+function addLaser(x1,y1,x2,y2,delay=.9,damage=28,width=15){
+ state.bossHazards.push({type:"laser",x1,y1,x2,y2,delay,life:.5,width,damage,hit:false});
+}
+function addStrike(x,y,r=62,delay=.8,damage=24){
+ state.bossHazards.push({type:"strike",x,y,r,delay,life:.35,damage,hit:false});
+}
+function bossAttack(f){
+ const b=state.boss,p=state.player;if(!b||!p)return;
+ const ang=Math.atan2(p.y-b.y,p.x-b.x);
+ if(f===1){
+   // THE PAST: sweeping memory laser, then a remembered pattern.
+   const L=1250;addLaser(b.x-Math.cos(ang)*L,b.y-Math.sin(ang)*L,b.x+Math.cos(ang)*L,b.y+Math.sin(ang)*L,.95,30,17);
+   for(let i=-2;i<=2;i++){const a=ang+i*.17;spawnBossShot(b,a,255,2.5,7,12);}
+ } else if(f===2){
+   // THE WEIGHT: several delayed crush zones plus temporary arena compression.
+   addStrike(clamp(p.x,95,W-95),clamp(p.y,120,H-80),80,.8,26);
+   addStrike(clamp(p.x+115*Math.sin(state.roomTime*2),95,W-95),clamp(p.y-105,120,H-80),58,1.05,22);
+   shrinkArena(28,3.8);
+ } else if(f===3){
+   // THE UNKNOWN: rotating cross-laser.
+   const a=state.roomTime*.9,L=1250;
+   addLaser(b.x-Math.cos(a)*L,b.y-Math.sin(a)*L,b.x+Math.cos(a)*L,b.y+Math.sin(a)*L,.7,28,13);
+   addLaser(b.x-Math.cos(a+Math.PI/2)*L,b.y-Math.sin(a+Math.PI/2)*L,b.x+Math.cos(a+Math.PI/2)*L,b.y+Math.sin(a+Math.PI/2)*L,.7,28,13);
+ } else if(f===4){
+   // THE ABSENCE: beam rain around the player and a few ghost threats.
+   for(let i=-2;i<=2;i++)addStrike(clamp(p.x+i*105,95,W-95),clamp(p.y+Math.sin(state.roomTime*1.7+i)*90,120,H-80),48,.7+Math.abs(i)*.08,21);
+   for(let i=0;i<6;i++)spawnBossShot(b,i*Math.PI/3,190,2.6,6,13);
+   if(state.enemies.length<3){for(let i=0;i<2;i++)state.enemies.push(makeEnemy("abandoned",clamp(b.x+rnd(-180,180),100,W-100),clamp(b.y+rnd(70,180),150,H-90)));}
+ } else {
+   // YOU: mirror the player's owned arsenal, weapon levels, and a few run upgrades.
+   if(!Array.isArray(b.mirrorWeapons)||!b.mirrorWeapons.length)b.mirrorWeapons=["memoryBlade"];
+   if(b.mirrorSwap<=0 && b.mirrorWeapons.length>1){
+     b.mirrorIndex=(b.mirrorIndex+1)%b.mirrorWeapons.length;
+     b.mirrorWeapon=b.mirrorWeapons[b.mirrorIndex];
+     b.mirrorSwap=4.2;
+   }
+   const w=b.mirrorWeapon||state.weapon||"memoryBlade";
+   const lv=weaponLevel(w), aim=Math.atan2(p.y-b.y,p.x-b.x);
+   b.mirrorLastAttack=w;
+   if(w==="memoryBlade"){
+     const L=150+lv*12;
+     addLaser(b.x-Math.cos(aim)*18,b.y-Math.sin(aim)*18,b.x+Math.cos(aim)*L,b.y+Math.sin(aim)*L,.62,24+lv*2,12+lv);
+     addStrike(p.x,p.y,42+lv*2,.88,18+lv*2);
+   } else if(w==="burdenHammer"){
+     addStrike(clamp(p.x,95,W-95),clamp(p.y,120,H-80),84+lv*3,.7,24+lv*3);
+     for(let i=-1;i<=1;i++){
+       const sx=clamp(p.x+Math.cos(aim+Math.PI/2)*i*95,95,W-95);
+       const sy=clamp(p.y+Math.sin(aim+Math.PI/2)*i*95,120,H-80);
+       addStrike(sx,sy,46,.95+i*.08,16+lv*2);
+     }
+     shrinkArena(18+lv*2,2.6);
+   } else if(w==="regretNeedles"){
+     const count=lv>=5?5:lv>=4?4:3, spread=lv>=4?.12:.17;
+     for(let i=0;i<count;i++){const aa=aim+(i-(count-1)/2)*spread;spawnBossShot(b,aa,360+lv*35,2.1,5,8+lv*2);}
+     spawnBossShot(b,aim,470+lv*30,1.7,6,10+lv*2);
+   } else if(w==="echo"){
+     spawnBossShot(b,aim,320+lv*20,2.2,7,10+lv*2);
+     setTimeout(()=>{
+       if(state.mode==="run"&&state.boss===b){
+         const aa=Math.atan2(state.player.y-b.y,state.player.x-b.x);
+         spawnBossShot(b,aa+0.28,340+lv*18,1.8,6,8+lv);
+         spawnBossShot(b,aa-0.28,340+lv*18,1.8,6,8+lv);
+       }
+     },650);
+   } else if(w==="forgiven"){
+     for(let i=-1;i<=1;i++){const aa=aim+i*.14;spawnBossShot(b,aa,350+lv*22,2.2,7,9+lv*2,{healBoss:lv>=3});}
+   }
+   if(b.mirrorUpgrades.includes("patience")){
+     addStrike(clamp(p.x+rnd(-80,80),95,W-95),clamp(p.y+rnd(-80,80),120,H-80),34,.95,14);
+   }
+   if(b.mirrorUpgrades.includes("weightless")){
+     const boost=1+0.22*Math.sin(state.roomTime*1.5);
+     b.x=clamp(b.x+Math.cos(aim)*18*boost,b.r+state.arena.left-10,state.arena.right-b.r+10);
+     b.y=clamp(b.y+Math.sin(aim)*18*boost,b.r+state.arena.top-10,state.arena.bottom-b.r+10);
+   }
+   if(b.mirrorUpgrades.includes("acceptance")&&!b.mirrorShieldUsed&&b.hp<b.max*.6){b.mirrorShieldUsed=true;b.inv=1.0;}
+   if(b.mirrorUpgrades.includes("forgiveness")&&!b.mirrorHealUsed&&b.hp<b.max*.28){b.mirrorHealUsed=true;b.hp=Math.min(b.max,b.hp+Math.round(b.max*.10));}
+   if(b.mirrorUpgrades.includes("courage")&&b.hp<b.max*.35){for(let i=0;i<4;i++)spawnBossShot(b,aim+i*.5-.75,390+lv*18,1.8,6,10+lv);}
+   if(b.mirrorUpgrades.includes("memoryBank")&&Math.random()<.35){
+     const a2=aim;
+     if(w==="regretNeedles")for(let i=-1;i<=1;i++)spawnBossShot(b,a2+i*.18,390+lv*18,1.7,5,9+lv);
+     else if(w==="burdenHammer")addStrike(p.x,p.y,55,.55,18+lv*2);
+   }
+   shrinkArena(20,2.8);
+ }
+}
+
+function updateBossHazards(dt){
+ const p=state.player;if(!p)return;
+ for(const h of state.bossHazards){
+   h.delay-=dt;if(h.delay<=0){h.life-=dt;if(!h.hit){let hit=false;if(h.type==="laser")hit=distanceToSegment(p.x,p.y,h.x1,h.y1,h.x2,h.y2)<h.width+p.radius;else if(h.type==="strike")hit=Math.hypot(p.x-h.x,p.y-h.y)<h.r+p.radius;if(hit){playerDamage(h.damage);h.hit=true;}}}
+ }
+ state.bossHazards=state.bossHazards.filter(h=>h.life>0);
+}
+
+function updateBoss(dt){
+ const b=state.boss,p=state.player;if(!b||!p)return;
+ b.inv=Math.max(0,b.inv-dt);b.phase=(b.phase+dt)%Math.PI*2;b.cooldown=Math.max(0,(b.cooldown||0)-dt);
+ if(b.final&&typeof b.mirrorSwap==="number")b.mirrorSwap=Math.max(0,b.mirrorSwap-dt);
+ const a=Math.atan2(p.y-b.y,p.x-b.x),speed=b.final?(48+state.floor*4):(30+state.floor*6);
+ b.x=clamp(b.x+Math.cos(a)*speed*dt,90,W-90);b.y=clamp(b.y+Math.sin(a)*speed*dt,110,H-90);
+ if(b.cooldown<=0){bossAttack(state.floor);b.cooldown=Math.max(.95,1.75-state.floor*.1);}
+ updateBossHazards(dt);
+ if(!b.final&&Math.random()<.45*dt){const aa=state.roomTime*.8+Math.random()*Math.PI*2;spawnBossShot(b,aa,145+state.floor*20,3.0,7,9+Math.floor(state.floor*.8));}
+ if(dist(b,p)<b.r+p.radius)playerDamage(b.final?19:17+state.floor*2);
+ if(b.hp<=0 && state.mode==="run"){
+   const final=!!b.final;
+   b.hp=0;state.boss=null;state.bossHazards=[];state.projectiles=state.projectiles.filter(q=>q.owner==="player");state.roomCleared=true;
+   if(state.rooms[state.room])state.rooms[state.room].cleared=true;
+   playTrack(final?"assets/music/final.mp3":floors[state.floor-1].track,false);
+   if(final){showFinalEpilogue();} else {showBossEpilogue(state.floor);}
+ }
+}
+
+function showBossEpilogue(f){
+ state.mode="epilogue";showOverlay("BOSS DEFEATED",floors[f-1].boss,"",[{
+   label:"Read the epilogue",fn:()=>startAutoScroll(floors[f-1].bossText,()=>{hideOverlay();if(f<5){openShop()}else{startFinalBoss();}})
+ }]);
+}
+function startFinalBoss(){
+ state.floor=5;
+ if(!Array.isArray(state.rooms) || !state.rooms.length){ generateFloor(); }
+ state.room=state.rooms.length-1;
+ const mirrorWeapons=Array.isArray(state.ownedWeapons)&&state.ownedWeapons.length?state.ownedWeapons.slice():["memoryBlade"];
+ state.boss={final:true,x:W/2,y:110,r:60,hp:760,max:760,phase:0,inv:0,name:"YOU",cooldown:1.25,moveT:0,mirrorWeapons,mirrorIndex:0,mirrorWeapon:mirrorWeapons[0],mirrorSwap:4.2,mirrorLastAttack:null,mirrorShieldUsed:false,mirrorHealUsed:false,mirrorUpgrades:Array.isArray(state.upgrades)?state.upgrades.slice():[]};
+ state.roomCleared=false; state.roomType="boss"; resetArena();
+ state.mode="run";setMode("run");playTrack("assets/music/final.mp3");loadBossRoom();
+}
+function loadBossRoom(){
+ state.roomType="boss";state.player={...state.player,x:W/2,y:H-84,hp:state.player.maxHp};state.enemies=[];state.projectiles=[];state.pickups=[];state.bossHazards=[];state.enemyHazards=[];resetArena();state.roomtitle="THE MIRROR";roomtitle.textContent="THE MIRROR";floorNum.textContent=5;roomNum.textContent="FINAL";updateMinimap();
+}
+
+function showFinalEpilogue(){
+ state.mode="epilogue";
+ audio.volume=.22;
+ const text=`You thought the final enemy would be the worst one.
+
+You thought it would be everything you hated about yourself collected into one shape.
+
+Instead, it looked like you.
+
+It moved like you.
+
+Every attack you made came back.
+
+Every attempt to hurt it only hurt yourself.
+
+You had spent years trying to defeat the person who made mistakes. The person who was lonely. The person who did not know how to handle everything they were feeling.
+
+You wanted to destroy that person because you believed that if they were gone, everything would finally be fixed.
+
+But that person was you.
+
+Not all of you. Not forever. But still you.
+
+You are not the worst thing you have ever done.
+
+You are not every apology you wish you had made sooner.
+
+You are a person who did things they regret.
+
+A person who was hurt.
+
+A person who hurt others.
+
+A person who tried.
+
+A person who failed.
+
+A person who kept going anyway.
+
+For the first time, you stopped raising your hands to fight.
+
+The other you looked back at you.
+
+Neither of you moved.
+
+Then, finally:
+
+You lowered your guard.
+
+And so did they.`;
+ startAutoScroll(text,()=>{hideOverlay();setMode("ending");save.understanding+=3;persist();});
+}
+
+function startAutoScroll(text,onDone){
+  overlayKicker.textContent="THE RECKONING";
+  overlayTitle.textContent="";
+  choiceList.innerHTML="";
+  overlay.classList.add("show","epilogue");
+  overlayBtn.style.display="inline-block";
+  overlayBtn.disabled=false;
+  overlayBtn.textContent="Exit";
+  overlayBtn.onclick=()=>{ hideOverlay(); onDone(); };
+
+  const wrap=document.createElement("div");
+  wrap.id="bossTextWrap";
+  const box=document.createElement("textarea");
+  box.id="bossText";
+  box.readOnly=true;
+  box.setAttribute("aria-label","Boss epilogue");
+  box.value=text;
+  box.scrollTop=0;
+  wrap.appendChild(box);
+  overlayBody.textContent="";
+  overlayBody.appendChild(wrap);
+}
+function showOverlay(k,t,b,buttons=[]){
+  overlay.classList.add("show");overlayKicker.textContent=k;overlayTitle.textContent=t;
+  overlayBody.textContent=b||"";choiceList.innerHTML="";overlayBtn.style.display=buttons.length?"none":"inline-block";
+  buttons.forEach((o,i)=>{const c=document.createElement("button");c.type="button";c.className="choice";c.innerHTML=`<span>${o.label}</span>${o.key?`<span class="key">[${o.key}]</span>`:""}${o.desc?`<span class="desc">${o.desc}</span>`:""}`;c.onclick=()=>o.fn();choiceList.appendChild(c);});
+}
+function hideOverlay(){
+  if(epilogueFrame){cancelAnimationFrame(epilogueFrame);epilogueFrame=0;}
+  overlay.classList.remove("show","epilogue");
+  overlayBtn.onclick=null;
+  overlayBtn.disabled=false;
+  overlayBtn.style.display="none";
+  choiceList.innerHTML="";
+  stopChoiceAmbience();
+}
+
+function updateHUD(){
+ const p=state.player;if(!p)return;
+ hpfill.style.width=(100*p.hp/p.maxHp)+"%";{const w=items.find(x=>x.id===state.weapon)?.name||"Memory Blade";weaponEl.textContent=`${w} · Lv.${weaponLevel(state.weapon)}`;}memNum.textContent=state.memoryThisRun;
+ if(p.x>W-180){
+   hint.textContent=state.roomCleared ? "E · enter the next room" : "The way forward is still closed";
+ }else{
+   hint.textContent=`WASD move · click / J / F / Space attack · E interact · R reset · 1–5 switch weapons · FLOOR ${state.floor} DIFFICULTY`;
+ }
+}
+function updateMinimap(){
+ minimap.innerHTML="";
+ state.rooms.forEach((r,i)=>{const d=document.createElement("div");d.className="mini"+(i===state.room?" current ":"")+(i===state.rooms.length-1?" boss ":"")+(r.cleared?" done ":"");minimap.appendChild(d)})
+}
+function render(){
+ ctx.clearRect(0,0,viewW,viewH);
+ const sx=viewW/W,sy=viewH/H,sc=Math.min(sx,sy); const ox=(viewW-W*sc)/2,oy=(viewH-H*sc)/2;
+ ctx.save();ctx.translate(ox,oy);ctx.scale(sc,sc);
+ drawRoom();ctx.restore();
+}
+function drawRoom(){
+ const f=state.floor?floors[Math.max(0,state.floor-1)]:floors[0];
+ const grad=ctx.createLinearGradient(0,0,W,H);grad.addColorStop(0,f.theme+"22");grad.addColorStop(1,"#06080a");ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+ // grid/floor
+ ctx.strokeStyle="rgba(255,255,255,.045)";ctx.lineWidth=1;
+ for(let x=0;x<W;x+=48){ctx.beginPath();ctx.moveTo(x,70);ctx.lineTo(x,H);ctx.stroke()}
+ for(let y=72;y<H;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ // border
+ ctx.strokeStyle="rgba(214,185,140,.20)";ctx.strokeRect(18,70,W-36,H-90);
+ // door
+ if(state.roomCleared){ctx.fillStyle="rgba(214,185,140,.12)";ctx.fillRect(W-40,H/2-55,20,110);ctx.strokeStyle="#d6b98c";ctx.strokeRect(W-40,H/2-55,20,110)}
+ else {ctx.fillStyle="rgba(255,255,255,.03)";ctx.fillRect(W-40,H/2-55,20,110)}
+ // floor-specific environmental language
+ if(state.floor===2){
+   for(const z of [{x:250,y:220,r:85},{x:680,y:360,r:70}]){
+     ctx.fillStyle="rgba(120,115,126,.10)";ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,Math.PI*2);ctx.fill();
+     ctx.strokeStyle="rgba(190,185,190,.08)";ctx.stroke();
+   }
+ }
+ if(state.floor===3 && state.player){
+   ctx.save();ctx.globalCompositeOperation="destination-out";
+   const vg=ctx.createRadialGradient(state.player.x,state.player.y,55,state.player.x,state.player.y,230);
+   vg.addColorStop(0,"rgba(0,0,0,1)");vg.addColorStop(1,"rgba(0,0,0,0)");
+   ctx.fillStyle=vg;ctx.beginPath();ctx.arc(state.player.x,state.player.y,230,0,Math.PI*2);ctx.fill();ctx.restore();
+ }
+ if(state.floor===4 && state.roomTime>1.2 && Math.sin(state.roomTime*1.3)>0.2){
+   for(let i=0;i<3;i++){const gx=140+i*300, gy=145+(i%2)*180;ctx.save();ctx.globalAlpha=.12+.05*Math.sin(state.roomTime*2+i);ctx.fillStyle="#cdd6d4";ctx.beginPath();ctx.arc(gx,gy,18,0,Math.PI*2);ctx.fill();ctx.restore()}
+ }
+ if(state.floor===5 && state.roomTime>3 && Math.floor(state.roomTime)%7===0){
+   ctx.save();ctx.globalAlpha=.14;ctx.strokeStyle="#d6b98c";ctx.lineWidth=2;ctx.strokeRect(W-160,120,100,90);ctx.restore();
+ }
+ // pickups
+ for(const it of state.pickups){ctx.save();ctx.translate(it.x,it.y);ctx.shadowBlur=18;ctx.shadowColor=it.kind==="memory"?"#d9d0b0":"#8eb6c4";ctx.fillStyle=it.kind==="memory"?"#d9d0b0":"#9ab7c2";ctx.beginPath();ctx.arc(0,0,it.kind==="memory"?8:11,0,Math.PI*2);ctx.fill();ctx.restore()}
+ // enemy hazards
+ for(const h of state.enemyHazards){ctx.save();
+   if(h.type==="aoe"){const active=h.delay<=0;ctx.globalAlpha=active?.52:.16;ctx.fillStyle=active?"#9b6e7d":"#b9969f";ctx.beginPath();ctx.arc(h.x,h.y,h.r,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#d6b98c";ctx.lineWidth=2;ctx.stroke();}
+   else if(h.type==="arena"){ctx.globalAlpha=.75;ctx.strokeStyle="#b79278";ctx.lineWidth=5;ctx.strokeRect(state.arena.left,state.arena.top,state.arena.right-state.arena.left,state.arena.bottom-state.arena.top);}
+   else if(h.type==="summon"){ctx.globalAlpha=.45;ctx.strokeStyle="#9ab7c2";ctx.lineWidth=2;ctx.beginPath();ctx.arc(h.x,h.y,h.r,0,Math.PI*2);ctx.stroke();}
+   ctx.restore();}
+ // enemies
+ for(const e of state.enemies){ctx.save();ctx.translate(e.x,e.y);ctx.fillStyle=e.hit>0?"#fff":e.color;ctx.strokeStyle="rgba(255,255,255,.2)";ctx.lineWidth=2;
+   if(e.type==="warden"){ctx.fillRect(-e.r,-e.r,e.r*2,e.r*2);ctx.strokeRect(-e.r,-e.r,e.r*2,e.r*2);}
+   else if(e.type==="dread"){ctx.beginPath();ctx.moveTo(0,-e.r);ctx.lineTo(e.r,e.r);ctx.lineTo(-e.r,e.r);ctx.closePath();ctx.fill();ctx.stroke();}
+   else if(e.type==="summoner"){ctx.beginPath();ctx.arc(0,0,e.r,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(0,0,e.r*.45,0,Math.PI*2);ctx.stroke();}
+   else if(e.type==="splitter"){ctx.rotate(Math.PI/4);ctx.fillRect(-e.r*.75,-e.r*.75,e.r*1.5,e.r*1.5);}
+   else if(e.type==="orbiter"){ctx.beginPath();ctx.arc(0,0,e.r*.65,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(0,0,e.r*1.3,e.r*.45,e.phase,0,Math.PI*2);ctx.stroke();}
+   else if(e.type==="mirror"){ctx.beginPath();ctx.moveTo(0,-e.r);ctx.lineTo(e.r,0);ctx.lineTo(0,e.r);ctx.lineTo(-e.r,0);ctx.closePath();ctx.fill();ctx.stroke();}
+   else if(e.type==="hollow"){ctx.beginPath();ctx.arc(0,0,e.r,0,Math.PI*2);ctx.stroke();}
+   else if(e.type==="static"){ctx.beginPath();ctx.moveTo(-e.r,0);ctx.lineTo(e.r,0);ctx.moveTo(0,-e.r);ctx.lineTo(0,e.r);ctx.stroke();}
+   else {ctx.beginPath();ctx.arc(0,0,e.r,0,Math.PI*2);ctx.fill();ctx.stroke();}
+   ctx.restore();}
+ // boss
+ if(state.boss){const b=state.boss;ctx.save();ctx.translate(b.x,b.y);ctx.shadowBlur=28;ctx.shadowColor="#d6b98c";ctx.fillStyle="#292c31";ctx.beginPath();ctx.arc(0,0,b.r,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#d6b98c";ctx.lineWidth=2;ctx.stroke();ctx.fillStyle="#d6b98c";ctx.font="14px Georgia";ctx.textAlign="center";ctx.fillText(b.final?`YOU · ${(items.find(x=>x.id===b.mirrorWeapon)?.name||"Memory Blade")}`:b.name,0,4);ctx.restore();
+   ctx.fillStyle="rgba(255,255,255,.1)";ctx.fillRect(W/2-180,82,360,8);ctx.fillStyle="#b86a6a";ctx.fillRect(W/2-180,82,360*b.hp/b.max,8);
+ }
+ // boss hazards / telegraphs
+ for(const h of state.bossHazards){ctx.save();
+   if(h.type==="laser"){
+     const active=h.delay<=0; ctx.globalAlpha=active?.72:.22;
+     ctx.strokeStyle=active?"#f1dcc2":"#d6b98c";ctx.lineWidth=active?h.width:3;ctx.shadowBlur=active?24:10;ctx.shadowColor="#d6b98c";
+     ctx.beginPath();ctx.moveTo(h.x1,h.y1);ctx.lineTo(h.x2,h.y2);ctx.stroke();
+   } else if(h.type==="strike"){
+     const active=h.delay<=0; ctx.globalAlpha=active?.72:.24;ctx.fillStyle=active?"#e8d6bf":"#b9a98f";ctx.shadowBlur=active?26:14;ctx.shadowColor="#d6b98c";ctx.beginPath();ctx.arc(h.x,h.y,h.r,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#d6b98c";ctx.lineWidth=2;ctx.stroke();
+   } ctx.restore();}
+ // projectiles
+ for(const q of state.projectiles){ctx.fillStyle=q.owner==="boss"?"#b86a6a":q.owner==="enemy"?"#8fa9bb":"#d6b98c";ctx.beginPath();ctx.arc(q.x,q.y,q.r,0,Math.PI*2);ctx.fill()}
+ // arena boundary
+ ctx.save();ctx.strokeStyle="rgba(214,185,140,.16)";ctx.lineWidth=3;ctx.strokeRect(state.arena.left,state.arena.top,state.arena.right-state.arena.left,state.arena.bottom-state.arena.top);ctx.restore();
+ // nearby pickup prompt
+ if(state.mode==="run"&&state.nearPickup&&state.player){const it=state.nearPickup;ctx.save();ctx.textAlign="center";ctx.font="13px system-ui";ctx.fillStyle="rgba(238,232,220,.94)";ctx.shadowBlur=10;ctx.shadowColor="#000";ctx.fillText("E  •  PICK UP  •  "+pickupLabel(it),it.x,it.y-24);ctx.restore();}
+ // player
+ const p=state.player;if(p){ctx.save();ctx.translate(p.x,p.y);ctx.globalAlpha=p.inv>0?.45:1;ctx.fillStyle="#e6e2d7";ctx.shadowBlur=18;ctx.shadowColor="#e6e2d7";ctx.beginPath();ctx.arc(0,0,p.radius,0,Math.PI*2);ctx.fill();ctx.restore()}
+ // attack feedback
+ if(state.mode==="run" && state.player && attackFX>0){
+   const p=state.player, ang=Math.atan2(mouse.y-p.y,mouse.x-p.x);
+   ctx.save();ctx.globalAlpha=Math.min(1,attackFX/.16);ctx.strokeStyle="#efe6cf";ctx.lineWidth=6;ctx.shadowBlur=18;ctx.shadowColor="#efe6cf";
+   ctx.beginPath();ctx.arc(p.x,p.y,54,ang-.7,ang+.7);ctx.stroke();ctx.restore();
+ }
+ // aim reticle
+ if(state.mode==="run" && state.player){
+   ctx.save();ctx.strokeStyle="rgba(214,185,140,.75)";ctx.lineWidth=1;ctx.beginPath();ctx.arc(mouse.x,mouse.y,6,0,Math.PI*2);ctx.moveTo(mouse.x-10,mouse.y);ctx.lineTo(mouse.x+10,mouse.y);ctx.moveTo(mouse.x,mouse.y-10);ctx.lineTo(mouse.x,mouse.y+10);ctx.stroke();ctx.restore();
+ }
+ // vignette
+ const v=ctx.createRadialGradient(W/2,H/2,120,W/2,H/2,580);v.addColorStop(0,"transparent");v.addColorStop(1,"rgba(0,0,0,.62)");ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
+}
+
+function handleRuntimeFault(err){
+  console.error(err);
+  runtimeFaulted=true;
+  state.mode="error";
+  stopChoiceAmbience();
+  try{showOverlay("RECOVERY","The run hit a problem","Your saved fragments and permanent progress are safe. Return to the quiet room and start a clean run.",[
+    {label:"Return to the quiet room",fn:()=>{runtimeFaulted=false;hideOverlay();state.mode="hub";setMode("hub");updateHub(true);requestAnimationFrame(mainLoop);}},
+    {label:"Reset the current run",fn:()=>{runtimeFaulted=false;hideOverlay();buildRun();requestAnimationFrame(mainLoop);}}
+  ])}catch(e){console.error(e)}
+}
+function mainLoop(t){
+  if(runtimeFaulted)return;
+  const dt=Math.min(.033,(t-state.lastTime)/1000);state.lastTime=t;
+  try{update(dt);render();}catch(err){handleRuntimeFault(err);return;}
+  requestAnimationFrame(mainLoop);
+}
+requestAnimationFrame(mainLoop);
+window.addEventListener("error",e=>{if(!runtimeFaulted){e.preventDefault();handleRuntimeFault(e.error||new Error(e.message||"Unknown error"));}});
+window.addEventListener("unhandledrejection",e=>{if(!runtimeFaulted){e.preventDefault();handleRuntimeFault(e.reason||new Error("Unhandled promise rejection"));}});
+
+musicToggle.onclick=()=>{musicOn=!musicOn;musicToggle.textContent="Music: "+(musicOn?"on":"off");if(!musicOn){audio.pause();stopChoiceAmbience()}else{playTrack(state.currentTrack||"assets/music/hub.mp3");if(state.mode==="hub")playChoiceAmbience()}};
+document.getElementById("finalDoc").href=FINAL_DOC;
+
+function prepareLoadoutChoices(){
+ const pool=["memoryBlade","regretNeedles","burdenHammer","echo","patience","courage","weightless","acceptance","memory"];
+ loadoutChoices=pool.sort(()=>Math.random()-.5).slice(0,3);
+ selectedLoadout=null;
+ loadoutConfirmed=false;
+}
+function renderLoadoutChoice(){
+ const wrap=document.getElementById("loadoutChoice");wrap.innerHTML="";
+ loadoutChoices.forEach((id,i)=>{
+   const it=items.find(x=>x.id===id); if(!it)return;
+   const isSelected=selectedLoadout===id;
+   const b=document.createElement("button");b.type="button";b.className="hubChoice"+(isSelected?" selected":"");b.dataset.slot=String(i+1);
+   b.setAttribute("aria-pressed",isSelected?"true":"false");
+   b.innerHTML=`<strong>${i+1}. ${it.name}${isSelected?" ✓":""}</strong><span>${it.desc}</span><span class="cost">${isSelected?"SELECTED":"CHOOSE"}</span>`;
+   b.onclick=()=>{
+     uiConfirm();
+     selectedLoadout=id;
+     loadoutConfirmed=false;
+     renderLoadoutChoice();
+     updateLoadoutStatus();
+   };
+   wrap.appendChild(b);
+ });
+ updateLoadoutStatus();
+}
+function updateLoadoutStatus(){
+ const chosen=items.find(x=>x.id===selectedLoadout);
+ const status=document.getElementById("loadoutStatus");
+ const btn=document.getElementById("continueBtn");
+ if(chosen){
+   status.textContent=`Selected: ${chosen.name}. You can change this choice before starting.`;
+   btn.disabled=false;
+   btn.textContent="Begin the descent";
+ } else {
+   status.textContent="Choose exactly one item to continue.";
+   btn.disabled=true;
+   btn.textContent="Choose a loadout first";
+ }
+}
+function updateHub(resetLoadout=false){
+ if(resetLoadout)prepareLoadoutChoices();
+ document.getElementById("understanding").textContent=save.understanding;
+ renderLoadoutChoice();
+ const wrap=document.getElementById("metaChoice");wrap.innerHTML="";
+ metaUpgrades.forEach((m,i)=>{
+   const owned=save.meta.includes(m.id); const locked=!owned && save.understanding<3;
+   const b=document.createElement("button");b.type="button";b.dataset.slot=String(i+1);b.className="hubChoice"+(locked?" locked":"");b.disabled=locked;
+   b.innerHTML=`<strong>${i+1}. ${m.name}${owned?" ✓":""}</strong><span>${m.desc}</span><span class="cost">${owned?"OWNED":"COST 3"}</span>`;
+   b.onclick=()=>{if(owned)return;if(save.understanding>=3){uiClick();save.understanding-=3;save.meta.push(m.id);persist();updateHub(false)}};
+   wrap.appendChild(b);
+ });
+ playTrack("assets/music/hub.mp3");
+}
+const shopCatalog=[
+ {id:"heal",name:"Quiet Remedy",desc:"Restore 35 HP.",price:3},
+ {id:"courage",name:"Courage",desc:"Gain power while your health is low.",price:5},
+ {id:"weightless",name:"Weightless",desc:"Move faster, but take more knockback.",price:5},
+ {id:"memory",name:"Memory",desc:"Reveals more of the current room map.",price:4},
+ {id:"regretNeedles",name:"Regret Needles",desc:"Unlock a rapid ranged weapon.",price:6},
+ {id:"burdenHammer",name:"Burden Hammer",desc:"Unlock a heavy shockwave weapon.",price:7},
+ {id:"echo",name:"Echo",desc:"Unlock a delayed-repeat weapon.",price:8},
+ {id:"forgiven",name:"Forgiven",desc:"Unlock a healing ranged weapon.",price:10}
+];
+function openShop(){
+ setMode("shop"); document.getElementById("shopEchoes").textContent=state.echoes;
+ const wrap=document.getElementById("shopItems");wrap.innerHTML="";
+ const stock=[];
+ // Always offer at least one weapon-upgrade when one is available.
+ const up=weaponUpgradeChoicePool();
+ if(up.length){ const wid=choice(up); stock.push({id:"wu:"+wid,name:`${weaponUpgradeData[wid].name} +1`,desc:`Upgrade your current ${weaponUpgradeData[wid].name} to Lv.${weaponLevel(wid)+1}.`,price:weaponUpgradeCost(wid)}); }
+ const available=shopCatalog.filter(it=>{if(it.id==="heal")return true;const def=items.find(x=>x.id===it.id);return def?.type==="weapon"?!state.ownedWeapons.includes(it.id):!state.upgrades.includes(it.id);}).sort(()=>Math.random()-.5);
+ for(const it of available){ if(stock.length>=3)break; stock.push({...it}); }
+ while(stock.length<3)stock.push({id:"heal",name:"Quiet Remedy",desc:"Restore 35 HP.",price:3});
+ stock.forEach((it,i)=>{
+   const b=document.createElement("button");b.type="button";b.className="shopItem";b.dataset.slot=String(i+1);
+   b.innerHTML=`<strong>${i+1}. ${it.name}</strong><span>${it.desc}</span><span class="price">${it.price} ECHOES</span>`;
+   b.onclick=()=>{
+     uiClick(); if(state.echoes<it.price){showOverlay("THE SHOP","Not enough echoes",`You need ${it.price}. You have ${state.echoes}.`,[{label:"Back",fn:hideOverlay}]);return;}
+     state.echoes-=it.price;
+     if(it.id==="heal") state.player.hp=Math.min(state.player.maxHp,state.player.hp+35);
+     else if(it.id.startsWith("wu:")){ const wid=it.id.slice(3); upgradeWeapon(wid); }
+     else { const def=items.find(x=>x.id===it.id); if(def?.type==="weapon"){if(!state.ownedWeapons.includes(it.id))state.ownedWeapons.push(it.id);state.weapon=it.id}else if(def&&!state.upgrades.includes(it.id))state.upgrades.push(it.id); }
+     persist(); b.disabled=true;b.classList.add("sold");b.innerHTML=`<strong>${it.name}</strong><span>SOLD OUT</span>`;document.getElementById("shopEchoes").textContent=state.echoes;updateHUD();
+   }; wrap.appendChild(b);
+ });
+}
+
+document.getElementById("leaveShop").onclick=()=>{uiConfirm();setMode("run");hideOverlay();if(state.floor<5){nextFloor()}else{startFinalBoss()}};
+document.getElementById("startBtn").onclick=()=>{uiConfirm();setMode("hub");updateHub(true);requestAnimationFrame(()=>document.getElementById("continueBtn")?.focus());};
+document.getElementById("continueBtn").onclick=()=>{
+  if(loadoutConfirmed)return;
+  if(!selectedLoadout){uiClick();updateLoadoutStatus();return;}
+  uiConfirm();
+  loadoutConfirmed=true;
+  stopChoiceAmbience();
+  buildRun();
+};
+setMode("title");
+})();
+</script>
+</div>
+</body>
+</html>
